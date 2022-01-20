@@ -18,7 +18,7 @@ fn main() {
         .add_system(handle_input)
         .add_system(handle_collision)
         .add_system(update_camera)
-        .insert_resource(Gravity::from(Vec3::new(0., -400.0, 0.)))
+        .insert_resource(Gravity::from(Vec3::new(0., -400., 0.)))
         .run();
 }
 
@@ -30,7 +30,7 @@ const TURN_RATIO: f32 = 1.;
 
 fn handle_collision(
     mut events: EventReader<CollisionEvent>,
-    transform: Query<&mut Transform, With<Player>>,
+    transform: Query<&Transform, With<PogoStick>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
     for event in events.iter() {
@@ -39,8 +39,7 @@ fn handle_collision(
         if event.is_started() && is_player(player_layer) {
             let quat = transform.single().rotation;
 
-            let pos = quat.z.is_sign_positive();
-            let a = if pos {
+            let a = if quat.z.is_sign_positive() {
                 (2. * quat.w.acos()) * -1.
             } else {
                 2. * quat.w.acos()
@@ -89,11 +88,11 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Floor
     commands
         .spawn_bundle((
-            Transform::from_translation(Vec3::Y * -200.0),
+            Transform::from_translation(Vec3::Y * -200.),
             GlobalTransform::default(),
         ))
         .insert(CollisionShape::Cuboid {
-            half_extends: Vec2::new(10000.0, 20.0).extend(0.0),
+            half_extends: Vec2::new(10000., 100.).extend(0.),
             border_radius: None,
         })
         .insert(RigidBody::Static);
@@ -102,29 +101,58 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("player_x2.png"),
-            transform: Transform::from_translation(Vec3::new(-400.0, 00.0, 0.0)),
+            transform: Transform::from_translation(Vec3::new(-400., 0., 0.)),
             ..Default::default()
         })
         .insert(Player)
         .insert(RigidBody::Dynamic)
-        //TODO: maybe attach the rigid body offset to the player?
-        //Maybe multiple colliders
-        //The bottom of the pogo stick
-        //The head for wipeouts
-        //The body for general collisions
-        .insert(CollisionShape::Cuboid {
-            half_extends: Vec3::new(30., 90., 0.),
-            border_radius: None,
-        })
         .insert(RotationConstraints::lock())
-        .insert(CollisionLayers::new(Layer::Player, Layer::World))
-        .insert(Velocity::default());
+        .insert(Velocity::default())
+        .with_children(|children| {
+            //Pogostick
+            children
+                .spawn_bundle(SpriteBundle {
+                    transform: Transform::from_translation(Vec3::new(12., -85., 0.)),
+                    ..Default::default()
+                })
+                .insert(CollisionShape::Sphere { radius: 10. })
+                .insert(RotationConstraints::lock())
+                .insert(PogoStick)
+                .insert(CollisionLayers::new(Layer::Player, Layer::World));
+
+            //Body
+            children
+                .spawn_bundle(SpriteBundle {
+                    transform: Transform::from_translation(Vec3::new(-5., -0., 0.)),
+                    ..Default::default()
+                })
+                .insert(CollisionShape::Capsule {
+                    half_segment: 60.,
+                    radius: 35.,
+                })
+                .insert(CollisionLayers::none());
+
+            //Head
+            children
+                .spawn_bundle(SpriteBundle {
+                    transform: Transform::from_translation(Vec3::new(-10., 55., 0.)),
+                    ..Default::default()
+                })
+                .insert(CollisionShape::Sphere { radius: 35. })
+                .insert(CollisionLayers::none());
+        });
 }
+
+#[derive(Component)]
+struct PogoStick;
 
 const ROTATION_SPEED: f32 = 0.09;
 
-fn handle_input(input: Res<Input<KeyCode>>, mut players: Query<&mut Transform, With<Player>>) {
-    let mut player = players.single_mut();
+fn handle_input(
+    input: Res<Input<KeyCode>>,
+    mut player: Query<&mut Transform, (With<Player>, Without<PogoStick>)>,
+) {
+    let mut player = player.single_mut();
 
     if input.pressed(KeyCode::A) {
         player.rotate(Quat::from_rotation_z(ROTATION_SPEED));
