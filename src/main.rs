@@ -26,19 +26,14 @@ fn handle_collision(
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
     for event in events.iter() {
-        // let (entity_1, entity_2) = event.rigid_body_entities();
-        let (layers_1, layers_2) = event.collision_layers();
+        let (_, player_layer) = event.collision_layers();
         let mut player = players.single_mut();
-        if event.is_started() {
-            if is_player(layers_1) {
-                // dbg!(entity_1);
-            } else if is_player(layers_2) {
-                //player collides with floor
-                let y = -player.linear.y / 1.1;
-                player.linear.y = y;
+        if event.is_started() && is_player(player_layer) {
+            //player collides with floor
+            let y = -player.linear.y / 1.1;
+            player.linear.y = y;
 
-                //TODO: find direction character is pointing
-            }
+            //TODO: find direction character is pointing
         }
     }
 }
@@ -47,7 +42,7 @@ fn is_player(layers: CollisionLayers) -> bool {
     layers.contains_group(Layer::Player) && !layers.contains_group(Layer::World)
 }
 
-fn spawn(mut commands: Commands) {
+fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 
     // Cuboid
@@ -75,35 +70,35 @@ fn spawn(mut commands: Commands) {
         .insert(RigidBody::Static);
 
     //Player
-    let size = Vec2::new(10.0, 30.0);
     commands
         .spawn_bundle(SpriteBundle {
-            sprite: Sprite {
-                color: Color::GREEN,
-                custom_size: Some(size),
-                ..Default::default()
-            },
+            texture: asset_server.load("player_x2.png"),
             transform: Transform::from_translation(Vec3::new(-400.0, 00.0, 0.0)),
             ..Default::default()
         })
         .insert(Player)
         .insert(RigidBody::Dynamic)
+        //TODO: maybe attach the rigid body offset to the player?
+        //Maybe multiple colliders
+        //The bottom of the pogo stick
+        //The head for wipeouts
+        //The body for general collisions
         .insert(CollisionShape::Cuboid {
-            half_extends: size.extend(0.0) / 2.0,
+            half_extends: Vec3::new(30., 90., 0.),
             border_radius: None,
         })
         .insert(CollisionLayers::new(Layer::Player, Layer::World))
         .insert(Velocity::default());
 }
 
-const SPEED: f32 = 0.1;
+const ROTATION_SPEED: f32 = 0.09;
 
 fn handle_input(input: Res<Input<KeyCode>>, mut players: Query<&mut Transform, With<Player>>) {
     let mut player = players.single_mut();
 
     if input.pressed(KeyCode::A) {
-        player.rotate(Quat::from_rotation_z(SPEED));
+        player.rotate(Quat::from_rotation_z(ROTATION_SPEED));
     } else if input.pressed(KeyCode::D) {
-        player.rotate(Quat::from_rotation_z(-SPEED));
+        player.rotate(Quat::from_rotation_z(-ROTATION_SPEED));
     }
 }
