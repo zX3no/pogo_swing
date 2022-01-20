@@ -23,17 +23,30 @@ fn main() {
 
 fn handle_collision(
     mut events: EventReader<CollisionEvent>,
+    test: Query<&mut Transform, With<Player>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
     for event in events.iter() {
         let (_, player_layer) = event.collision_layers();
         let mut player = players.single_mut();
         if event.is_started() && is_player(player_layer) {
-            //player collides with floor
-            let y = -player.linear.y / 1.1;
-            player.linear.y = y;
+            let quat = test.single().rotation;
 
-            //TODO: find direction character is pointing
+            let pos = quat.z.is_sign_positive();
+            let a = if pos {
+                (2. * quat.w.acos()) * -1.
+            } else {
+                2. * quat.w.acos()
+            };
+
+            let velocity = player.linear;
+            let mag = velocity.length();
+            let new_dir = Vec3::new(a.sin() * mag, a.cos() * mag, 0.);
+            dbg!(quat, quat.w, a, velocity, mag, new_dir);
+
+            let y = -player.linear.y * 0.5;
+            player.linear.y = y;
+            player.linear += new_dir;
         }
     }
 }
@@ -64,7 +77,7 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
             GlobalTransform::default(),
         ))
         .insert(CollisionShape::Cuboid {
-            half_extends: Vec2::new(500.0, 5.0).extend(0.0),
+            half_extends: Vec2::new(1000.0, 20.0).extend(0.0),
             border_radius: None,
         })
         .insert(RigidBody::Static);
@@ -87,6 +100,7 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
             half_extends: Vec3::new(30., 90., 0.),
             border_radius: None,
         })
+        .insert(RotationConstraints::lock())
         .insert(CollisionLayers::new(Layer::Player, Layer::World))
         .insert(Velocity::default());
 }
