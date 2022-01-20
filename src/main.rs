@@ -17,7 +17,8 @@ fn main() {
         .add_startup_system(spawn)
         .add_system(handle_input)
         .add_system(handle_collision)
-        .insert_resource(Gravity::from(Vec3::new(0., -200.0, 0.)))
+        .add_system(update_camera)
+        .insert_resource(Gravity::from(Vec3::new(0., -400.0, 0.)))
         .run();
 }
 
@@ -29,14 +30,14 @@ const TURN_RATIO: f32 = 1.;
 
 fn handle_collision(
     mut events: EventReader<CollisionEvent>,
-    tranform: Query<&mut Transform, With<Player>>,
+    transform: Query<&mut Transform, With<Player>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
     for event in events.iter() {
         let (_, player_layer) = event.collision_layers();
         let mut player = players.single_mut();
         if event.is_started() && is_player(player_layer) {
-            let quat = tranform.single().rotation;
+            let quat = transform.single().rotation;
 
             let pos = quat.z.is_sign_positive();
             let a = if pos {
@@ -57,6 +58,12 @@ fn handle_collision(
 
 fn is_player(layers: CollisionLayers) -> bool {
     layers.contains_group(Layer::Player) && !layers.contains_group(Layer::World)
+}
+
+fn update_camera(mut cameras: Query<&mut Transform, With<Camera>>) {
+    let mut camera = cameras.single_mut();
+    //TODO: get the players transform
+    camera.translation = Vec3::new(500., 100., 999.9);
 }
 
 fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
