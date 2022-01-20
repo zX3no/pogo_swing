@@ -23,7 +23,7 @@ fn main() {
 }
 
 //How high the player can bounce
-const BOUNCE_HEIGHT: f32 = 250.;
+const BOUNCE_HEIGHT: f32 = 350.;
 
 //How fast player can turn around
 const TURN_RATIO: f32 = 1.;
@@ -60,10 +60,15 @@ fn is_player(layers: CollisionLayers) -> bool {
     layers.contains_group(Layer::Player) && !layers.contains_group(Layer::World)
 }
 
-fn update_camera(mut cameras: Query<&mut Transform, With<Camera>>) {
+fn update_camera(
+    mut cameras: Query<&mut Transform, With<Camera>>,
+    players: Query<&Transform, (With<Player>, Without<Camera>)>,
+) {
     let mut camera = cameras.single_mut();
-    //TODO: get the players transform
-    camera.translation = Vec3::new(500., 100., 999.9);
+    let player = players.single();
+    let mut new_pos = player.translation;
+    new_pos.z = 999.99;
+    camera.translation = new_pos;
 }
 
 fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -88,7 +93,7 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
             GlobalTransform::default(),
         ))
         .insert(CollisionShape::Cuboid {
-            half_extends: Vec2::new(1000.0, 20.0).extend(0.0),
+            half_extends: Vec2::new(10000.0, 20.0).extend(0.0),
             border_radius: None,
         })
         .insert(RigidBody::Static);
