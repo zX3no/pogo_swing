@@ -21,16 +21,22 @@ fn main() {
         .run();
 }
 
+//How high the player can bounce
+const BOUNCE_HEIGHT: f32 = 250.;
+
+//How fast player can turn around
+const TURN_RATIO: f32 = 1.;
+
 fn handle_collision(
     mut events: EventReader<CollisionEvent>,
-    test: Query<&mut Transform, With<Player>>,
+    tranform: Query<&mut Transform, With<Player>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
     for event in events.iter() {
         let (_, player_layer) = event.collision_layers();
         let mut player = players.single_mut();
         if event.is_started() && is_player(player_layer) {
-            let quat = test.single().rotation;
+            let quat = tranform.single().rotation;
 
             let pos = quat.z.is_sign_positive();
             let a = if pos {
@@ -42,11 +48,9 @@ fn handle_collision(
             let velocity = player.linear;
             let mag = velocity.length();
             let new_dir = Vec3::new(a.sin() * mag, a.cos() * mag, 0.);
-            dbg!(quat, quat.w, a, velocity, mag, new_dir);
-
-            let y = -player.linear.y * 0.5;
-            player.linear.y = y;
-            player.linear += new_dir;
+            player.linear.y = -player.linear.y;
+            player.linear += new_dir * TURN_RATIO;
+            player.linear = player.linear.normalize_or_zero() * BOUNCE_HEIGHT;
         }
     }
 }
