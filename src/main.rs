@@ -30,7 +30,7 @@ const TURN_RATIO: f32 = 1.;
 
 fn handle_collision(
     mut events: EventReader<CollisionEvent>,
-    transform: Query<&Transform, With<PogoStick>>,
+    transform: Query<&Transform, With<Player>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
     for event in events.iter() {
@@ -51,6 +51,7 @@ fn handle_collision(
             player.linear.y = -player.linear.y;
             player.linear += new_dir * TURN_RATIO;
             player.linear = player.linear.normalize_or_zero() * BOUNCE_HEIGHT;
+            dbg!(player.linear);
         }
     }
 }
@@ -117,7 +118,6 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
                 })
                 .insert(CollisionShape::Sphere { radius: 10. })
                 .insert(RotationConstraints::lock())
-                .insert(PogoStick)
                 .insert(CollisionLayers::new(Layer::Player, Layer::World));
 
             //Body
@@ -130,6 +130,7 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
                     half_segment: 60.,
                     radius: 35.,
                 })
+                .insert(RotationConstraints::lock())
                 .insert(CollisionLayers::none());
 
             //Head
