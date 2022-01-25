@@ -30,14 +30,14 @@ const TURN_RATIO: f32 = 1.;
 
 fn handle_collision(
     mut events: EventReader<CollisionEvent>,
-    transform: Query<&Transform, With<Player>>,
-    mut players: Query<&mut Velocity, With<Player>>,
+    mut player: Query<(&mut Velocity, &Transform), With<Player>>,
 ) {
     for event in events.iter() {
         let (_, player_layer) = event.collision_layers();
-        let mut player = players.single_mut();
+        let (mut velocity, transform) = player.single_mut();
+
         if event.is_started() && is_player(player_layer) {
-            let quat = transform.single().rotation;
+            let quat = transform.rotation;
 
             let a = if quat.z.is_sign_positive() {
                 (2. * quat.w.acos()) * -1.
@@ -45,13 +45,11 @@ fn handle_collision(
                 2. * quat.w.acos()
             };
 
-            let velocity = player.linear;
-            let mag = velocity.length();
+            let mag = velocity.linear.length();
             let new_dir = Vec3::new(a.sin() * mag, a.cos() * mag, 0.);
-            player.linear.y = -player.linear.y;
-            player.linear += new_dir * TURN_RATIO;
-            player.linear = player.linear.normalize_or_zero() * BOUNCE_HEIGHT;
-            dbg!(player.linear);
+            velocity.linear.y = -velocity.linear.y;
+            velocity.linear += new_dir * TURN_RATIO;
+            velocity.linear = velocity.linear.normalize_or_zero() * BOUNCE_HEIGHT;
         }
     }
 }
