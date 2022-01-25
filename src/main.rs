@@ -28,6 +28,10 @@ const BOUNCE_HEIGHT: f32 = 350.;
 //How fast player can turn around
 const TURN_RATIO: f32 = 1.;
 
+fn is_player(layers: CollisionLayers) -> bool {
+    layers.contains_group(Layer::Player) && !layers.contains_group(Layer::World)
+}
+
 fn handle_collision(
     mut events: EventReader<CollisionEvent>,
     mut player: Query<(&mut Velocity, &Transform), With<Player>>,
@@ -54,10 +58,19 @@ fn handle_collision(
     }
 }
 
-fn is_player(layers: CollisionLayers) -> bool {
-    layers.contains_group(Layer::Player) && !layers.contains_group(Layer::World)
+const ROTATION_SPEED: f32 = 0.09;
+
+fn handle_input(input: Res<Input<KeyCode>>, mut player: Query<&mut Transform, With<Player>>) {
+    let mut player = player.single_mut();
+
+    if input.pressed(KeyCode::A) {
+        player.rotate(Quat::from_rotation_z(ROTATION_SPEED));
+    } else if input.pressed(KeyCode::D) {
+        player.rotate(Quat::from_rotation_z(-ROTATION_SPEED));
+    }
 }
 
+//Make the camera follow the players position
 fn update_camera(
     mut cameras: Query<&mut Transform, With<Camera>>,
     players: Query<&Transform, (With<Player>, Without<Camera>)>,
@@ -79,7 +92,7 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
             GlobalTransform::default(),
         ))
         .insert(CollisionShape::Cuboid {
-            half_extends: Vec2::new(10.0, 50.0).extend(0.0),
+            half_extends: Vec3::new(10., 50., 0.),
             border_radius: None,
         })
         .insert(RigidBody::Dynamic);
@@ -121,7 +134,7 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
             //Body
             children
                 .spawn_bundle(SpriteBundle {
-                    transform: Transform::from_translation(Vec3::new(-5., -0., 0.)),
+                    transform: Transform::from_translation(Vec3::new(-5., 0., 0.)),
                     ..Default::default()
                 })
                 .insert(CollisionShape::Capsule {
@@ -140,22 +153,4 @@ fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .insert(CollisionShape::Sphere { radius: 35. })
                 .insert(CollisionLayers::none());
         });
-}
-
-#[derive(Component)]
-struct PogoStick;
-
-const ROTATION_SPEED: f32 = 0.09;
-
-fn handle_input(
-    input: Res<Input<KeyCode>>,
-    mut player: Query<&mut Transform, (With<Player>, Without<PogoStick>)>,
-) {
-    let mut player = player.single_mut();
-
-    if input.pressed(KeyCode::A) {
-        player.rotate(Quat::from_rotation_z(ROTATION_SPEED));
-    } else if input.pressed(KeyCode::D) {
-        player.rotate(Quat::from_rotation_z(-ROTATION_SPEED));
-    }
 }
